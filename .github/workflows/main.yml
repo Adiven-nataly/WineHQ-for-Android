@@ -39,12 +39,7 @@ jobs:
           # Verify structure
           ls -la WineHQ/
 
-      - name: Push to repository
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add WineHQ/
-          git commit -m "Add WineHQ files - $(date)"
-          git push origin main
+      - uses: actions/upload-artifact@v3
+         with:
+            name: wine-files
+            path: WineHQ/
