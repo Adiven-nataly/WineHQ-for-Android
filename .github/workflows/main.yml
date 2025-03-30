@@ -1,39 +1,42 @@
-name: Download WineHQ Binary
+name: Install WineHQ on Ubuntu 24.04
 on:
   workflow_dispatch:
-  
+
 jobs:
-  download-wine:
-    runs-on: ubuntu-latest
+  install-wine:
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Dependencies
+      - name: Enable 32-bit architecture
+        run: sudo dpkg --add-architecture i386
+
+      - name: Add WineHQ repository (Ubuntu 22.04/Jammy)
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          wget -qO- https://dl.winehq.org/wine-builds/winehq.key | sudo gpg --dearmor -o /etc/apt/keyrings/winehq-archive-keyring.gpg
+          echo "deb [arch=amd64,i386 signed-by=/etc/apt/keyrings/winehq-archive-keyring.gpg] https://dl.winehq.org/wine-builds/ubuntu/ jammy main" | sudo tee /etc/apt/sources.list.d/winehq-jammy.list
+
+      - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y wget gnupg2
+          sudo apt install -y --install-recommends winehq-stable
 
-      - name: Add WineHQ Repository Key (Cara yang Valid)
-        run: |
-          wget -qO- https://dl.winehq.org/wine-builds/winehq.key | sudo gpg --dearmor -o /usr/share/keyrings/winehq-archive-keyring.gpg
+      - name: Verify installation
+        run: wine --version
 
-      - name: Add Repository
+      - name: Prepare Wine files
         run: |
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/winehq-archive-keyring.gpg] https://dl.winehq.org/wine-builds/ubuntu/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/winehq.list
-
-      - name: Install Wine
-        run: |
-          sudo apt update
-          sudo apt install --no-install-recommends winehq-stable -y
           mkdir -p WineHQ
-          cp -r /opt/wine-stable/* WineHQ/
+          cp -r ~/.wine WineHQ/
+          cp $(which wine) WineHQ/
 
-      - name: Push to Repository
+      - name: Push to repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add WineHQ/
-          git commit -m "Update WineHQ binaries"
+          git commit -m "Add WineHQ binaries"
           git push origin HEAD:main
