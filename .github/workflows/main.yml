@@ -40,6 +40,6 @@ jobs:
           ls -la WineHQ/
 
       - uses: actions/upload-artifact@v3
-         with:
+        with:
             name: wine-files
             path: WineHQ/
