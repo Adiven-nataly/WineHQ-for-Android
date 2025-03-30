@@ -8,20 +8,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download WineHQ
+      - name: Install Dependencies
         run: |
-          wget https://dl.winehq.org/wine-builds/ubuntu/winehq.key -O winehq.key
-          sudo apt-key add winehq.key
-          sudo apt-add-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ focal main'
+          sudo apt update
+          sudo apt install -y wget gnupg2
+
+      - name: Add WineHQ Repository Key (Cara yang Valid)
+        run: |
+          wget -qO- https://dl.winehq.org/wine-builds/winehq.key | sudo gpg --dearmor -o /usr/share/keyrings/winehq-archive-keyring.gpg
+
+      - name: Add Repository
+        run: |
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/winehq-archive-keyring.gpg] https://dl.winehq.org/wine-builds/ubuntu/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/winehq.list
+
+      - name: Install Wine
+        run: |
           sudo apt update
           sudo apt install --no-install-recommends winehq-stable -y
           mkdir -p WineHQ
           cp -r /opt/wine-stable/* WineHQ/
 
       - name: Push to Repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add WineHQ/
           git commit -m "Update WineHQ binaries"
-          git push
+          git push origin HEAD:main
