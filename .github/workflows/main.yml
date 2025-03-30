@@ -1,6 +1,5 @@
 name: WineHQ Installation
-on:
-  workflow_dispatch:
+on: [workflow_dispatch]
 
 jobs:
   install-wine:
@@ -8,38 +7,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up WineHQ (Ubuntu 24.04 workaround)
+      - name: Install WineHQ (Ubuntu 24.04 workaround)
         run: |
-          # Enable 32-bit architecture
           sudo dpkg --add-architecture i386
-          
-          # Add WineHQ repository (using Jammy for compatibility)
           sudo mkdir -p /etc/apt/keyrings
           wget -qO- https://dl.winehq.org/wine-builds/winehq.key | sudo gpg --dearmor -o /etc/apt/keyrings/winehq-archive-keyring.gpg
           echo "deb [arch=amd64,i386 signed-by=/etc/apt/keyrings/winehq-archive-keyring.gpg] https://dl.winehq.org/wine-builds/ubuntu/ jammy main" | sudo tee /etc/apt/sources.list.d/winehq-jammy.list
-          
-          # Install Wine with recommended dependencies
           sudo apt update
           sudo apt install -y --install-recommends winehq-stable
 
-      - name: Initialize Wine environment
+      - name: Initialize Wine
         run: |
-          # Explicitly create Wine prefix
           wine wineboot --init
-          sleep 10  # Wait for initialization
+          sleep 5
 
-      - name: Prepare Wine files
+      - name: Capture ALL Wine files
         run: |
-          mkdir -p WineHQ
-          
-          # Copy essential files (include both binaries and config)
-          cp -r "$(which wine)" WineHQ/
-          cp -r "$HOME/.wine" WineHQ/ || echo ".wine not found, continuing without config"
-          
-          # Verify structure
-          ls -la WineHQ/
+          mkdir -p wine-dist
+          cp $(which wine) wine-dist/
+          cp $(which wineserver) wine-dist/
+          cp -r /usr/lib/i386-linux-gnu/wine wine-dist/lib32
+          cp -r /usr/lib/x86_64-linux-gnu/wine wine-dist/lib64
+          cp -r ~/.wine wine-dist/config
+          tree wine-dist -L 2
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
-            name: wine-files
-            path: WineHQ/
+          name: wine-full-dist
+          path: wine-dist/
+          retention-days: 1
