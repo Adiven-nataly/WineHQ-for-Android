@@ -1,0 +1,27 @@
+name: Download WineHQ Binary
+on:
+  workflow_dispatch:
+  
+jobs:
+  download-wine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download WineHQ
+        run: |
+          wget https://dl.winehq.org/wine-builds/ubuntu/winehq.key -O winehq.key
+          sudo apt-key add winehq.key
+          sudo apt-add-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ focal main'
+          sudo apt update
+          sudo apt install --no-install-recommends winehq-stable -y
+          mkdir -p WineHQ
+          cp -r /opt/wine-stable/* WineHQ/
+
+      - name: Push to Repository
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add WineHQ/
+          git commit -m "Update WineHQ binaries"
+          git push
