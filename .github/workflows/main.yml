@@ -18,8 +18,8 @@ jobs:
 
       - name: Initialize Wine
         run: |
-          wine wineboot --init
-          sleep 5
+          mkdir -p ~/.wine
+          WINEPREFIX=~/.wine winecfg
 
       - name: Capture Wine Distribution
         run: |
@@ -29,13 +29,17 @@ jobs:
           cp $(which wineserver) wine-dist/
           
           mkdir -p wine-dist/lib
-          ldd $(which wine) | awk '/=>/ {print $3}' | xargs -I {} cp {} wine-dist/lib/
+          ldd $(which wine) | awk '/=>/ {print $3}' | xargs -I {} cp -L {} wine-dist/lib/
           
           mkdir -p wine-dist/lib32
-          ldd $(which wine) | grep -i 32 | awk '/=>/ {print $3}' | xargs -I {} cp {} wine-dist/lib32/
+          ldd $(which wine) | grep -i 32 | awk '/=>/ {print $3}' | xargs -I {} cp -L {} wine-dist/lib32/
           
-          cp -r ~/.wine wine-dist/config
-          
+          mkdir -p wine-dist/config
+          cp -r ~/.wine/drive_c wine-dist/config/
+          cp -r ~/.wine/system.reg wine-dist/config/
+          cp -r ~/.wine/user.reg wine-dist/config/
+          cp -r ~/.wine/userdef.reg wine-dist/config/
+
           tree wine-dist
 
       - name: Upload Artifact
