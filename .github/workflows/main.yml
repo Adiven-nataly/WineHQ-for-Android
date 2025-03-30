@@ -39,7 +39,7 @@ jobs:
           # Verify structure
           ls -la WineHQ/
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
             name: wine-files
             path: WineHQ/
