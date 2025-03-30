@@ -1,8 +1,8 @@
-name: WineHQ Complete Capture
+name: WineHQ Build and Deploy
 on: [workflow_dispatch]
 
 jobs:
-  capture-wine:
+  build-and-deploy:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -16,34 +16,29 @@ jobs:
           sudo apt update
           sudo apt install -y --install-recommends winehq-stable wine32
 
-      - name: Initialize Wine
+      - name: Prepare Wine Files
         run: |
-          mkdir -p ~/.wine
-          WINEPREFIX=~/.wine winecfg
+          mkdir -p wine-build
+          
+          cp $(which wine) wine-build/
+          cp $(which wineserver) wine-build/
+          
+          mkdir -p wine-build/lib
+          ldd $(which wine) | awk '/=>/ {print $3}' | xargs -I {} cp -L {} wine-build/lib/
+          
+          mkdir -p wine-build/config
+          WINEPREFIX=./wine-build/config winecfg &>/dev/null & sleep 10
 
-      - name: Capture Wine Distribution
+      - name: Commit and Push to Repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p wine-dist
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
           
-          cp $(which wine) wine-dist/
-          cp $(which wineserver) wine-dist/
+          mkdir -p dist/wine
+          cp -r wine-build/* dist/wine/
           
-          mkdir -p wine-dist/lib
-          ldd $(which wine) | awk '/=>/ {print $3}' | xargs -I {} cp -L {} wine-dist/lib/
-          
-          mkdir -p wine-dist/lib32
-          ldd $(which wine) | grep -i 32 | awk '/=>/ {print $3}' | xargs -I {} cp -L {} wine-dist/lib32/
-          
-          mkdir -p wine-dist/config
-          cp -r ~/.wine/drive_c wine-dist/config/
-          cp -r ~/.wine/system.reg wine-dist/config/
-          cp -r ~/.wine/user.reg wine-dist/config/
-          cp -r ~/.wine/userdef.reg wine-dist/config/
-
-          tree wine-dist
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: wine-complete
-          path: wine-dist/
+          git add dist/
+          git commit -m "Update WineHQ build $(date +'%Y-%m-%d %H:%M:%S')"
+          git push origin HEAD:$GITHUB_REF
