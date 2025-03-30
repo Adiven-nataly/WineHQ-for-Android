@@ -2,12 +2,12 @@ name: WineHQ Installation
 on: [workflow_dispatch]
 
 jobs:
-  install-wine:
+  capture-wine:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install WineHQ (Ubuntu 24.04 workaround)
+      - name: Install WineHQ
         run: |
           sudo dpkg --add-architecture i386
           sudo mkdir -p /etc/apt/keyrings
@@ -21,19 +21,33 @@ jobs:
           wine wineboot --init
           sleep 5
 
-      - name: Capture ALL Wine files
+      - name: Find Wine Files
+        run: |
+          echo "Binary wine: $(which wine)"
+          echo "Binary wineserver: $(which wineserver)"
+          echo "Library paths:"
+          ldconfig -p | grep wine
+          dpkg -L wine-stable | grep -i lib
+
+      - name: Capture Wine Distribution
         run: |
           mkdir -p wine-dist
+          
           cp $(which wine) wine-dist/
           cp $(which wineserver) wine-dist/
-          cp -r /usr/lib/i386-linux-gnu/wine wine-dist/lib32
-          cp -r /usr/lib/x86_64-linux-gnu/wine wine-dist/lib64
+          
+          mkdir -p wine-dist/lib
+          for lib in $(ldd $(which wine) | awk '/=>/ {print $3}'); do
+            if [ -f "$lib" ]; then
+              cp "$lib" wine-dist/lib/
+            fi
+          done
+          
           cp -r ~/.wine wine-dist/config
-          tree wine-dist -L 2
+          tree wine-dist -L 3
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wine-full-dist
+          name: wine-complete
           path: wine-dist/
-          retention-days: 1
